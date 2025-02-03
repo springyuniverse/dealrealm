@@ -53,10 +53,9 @@ Remember: You are the CEO making a buying decision, not an evaluator. Respond na
     ];
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "o3-mini",
       messages: formattedMessages,
-      temperature: 0.7,
-      max_tokens: 500,
+      max_completion_tokens: 500,
     });
 
     return completion.choices[0].message?.content || '';
@@ -104,7 +103,7 @@ Example format:
 }`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "o3-mini",
       messages: [
         { 
           role: 'system', 
@@ -115,8 +114,7 @@ Example format:
           content: analysisPrompt 
         }
       ],
-      temperature: 0.3,
-      max_tokens: 500,
+      max_completion_tokens: 500,
     });
 
     const content = completion.choices[0].message?.content || '{}';
