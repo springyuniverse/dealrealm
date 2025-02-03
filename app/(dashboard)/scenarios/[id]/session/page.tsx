@@ -4,19 +4,20 @@ import React, { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/store/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  MessageSquare, 
-  Send, 
-  Brain, 
-  Timer, 
-  Eye, 
+import {
+  MessageSquare,
+  Send,
+  Brain,
+  Timer,
+  Eye,
   EyeOff,
   ArrowLeft,
   MessageCircle
 } from "lucide-react";
 import { Scenario, getScenarioById } from "@/lib/services/scenarios";
 import { Message } from "@/types";
-import { CeoAgent } from "@/components/ceo-agent";
+import { DynamicConversationWidget } from "@/components/dynamic-conversation-widget";
+
 
 interface Props {
   params: {
@@ -27,7 +28,7 @@ interface Props {
 export default function ChatSessionPage({ params }: Props) {
   // Unwrap params using React.use()
   const { id } = use(params);
-  
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [userInput, setUserInput] = useState("");
   const [showScenario, setShowScenario] = useState(false);
@@ -88,7 +89,7 @@ export default function ChatSessionPage({ params }: Props) {
   const handleStartSession = async () => {
     setSessionStarted(true);
     setQuestionCount(1);
-    
+
     try {
       const initialMessage: Message = {
         role: "assistant",
@@ -158,23 +159,7 @@ export default function ChatSessionPage({ params }: Props) {
     }
   };
 
-  if (loading || loadingScenario) {
-    return (
-      <>
-        <div className="max-w-6xl mx-auto p-4">
-          <div className="text-center">Loading...</div>
-        </div>
-        <div className="mt-8">
-          {scenario && (
-            <CeoAgent 
-              scenario={scenario!}
-              userName={user?.displayName || "User"}
-            />
-          )}
-        </div>
-      </>
-    );
-  }
+
 
   if (!user || !scenario) return null;
 
@@ -234,12 +219,6 @@ export default function ChatSessionPage({ params }: Props) {
             </CardContent>
           </Card>
         </div>
-        <div className="mt-8">
-          <CeoAgent 
-            scenario={scenario!}
-            userName={user?.displayName || "User"}
-          />
-        </div>
       </>
     );
   }
@@ -272,6 +251,13 @@ export default function ChatSessionPage({ params }: Props) {
                 </>
               )}
             </button>
+
+            <div className="ml-auto">
+              <DynamicConversationWidget
+                scenario={scenario}
+                userName={user?.displayName || "User"}
+              />
+            </div>
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 px-4 py-2 bg-blue-100 rounded-lg">
@@ -335,12 +321,11 @@ export default function ChatSessionPage({ params }: Props) {
                 <div className="h-96 overflow-y-auto mb-4 p-4 bg-gray-50 rounded-lg">
                   {messages.map((message, index) => (
                     <div key={index}>
-                      <div 
-                        className={`mb-4 ${
-                          message.role === "user" 
+                      <div
+                        className={`mb-4 ${message.role === "user"
                             ? "ml-auto max-w-md bg-blue-100 p-3 rounded-lg"
                             : "mr-auto max-w-md bg-white p-3 rounded-lg shadow"
-                        }`}
+                          }`}
                       >
                         <p className="text-gray-800">{message.content}</p>
                       </div>
@@ -415,12 +400,6 @@ export default function ChatSessionPage({ params }: Props) {
             )}
           </div>
         </div>
-      </div>
-      <div className="mt-8">
-        <CeoAgent 
-          scenario={scenario!}
-          userName={user?.displayName || "User"}
-        />
       </div>
     </>
   );
