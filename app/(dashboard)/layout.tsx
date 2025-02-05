@@ -12,7 +12,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isAdmin } = useAuth();
+  const { isAdmin, currentTeamId } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -30,11 +30,11 @@ export default function DashboardLayout({
       <div className="bg-blue-950">
         <div className="flex h-16 items-center px-4 max-w-6xl mx-auto">
           <Link href="/scenarios" className="flex items-center gap-2">
-            <Image 
-              src="/dealrealm-logo.svg" 
-              alt="DealRealm Logo" 
-              width={32} 
-              height={32} 
+            <Image
+              src="/dealrealm-logo.svg"
+              alt="DealRealm Logo"
+              width={32}
+              height={32}
             />
             <div>
               <div className="text-lg font-medium text-white">
@@ -49,27 +49,24 @@ export default function DashboardLayout({
             <nav className="flex items-center space-x-4 text-sm">
               <Link
                 href="/scenarios"
-                className={`text-gray-200 hover:text-white transition-colors ${
-                  pathname === '/scenarios' ? 'text-white font-medium' : ''
-                }`}
+                className={`text-gray-200 hover:text-white transition-colors ${pathname === '/scenarios' ? 'text-white font-medium' : ''
+                  }`}
               >
                 Scenarios
               </Link>
               {isAdmin && (
                 <>
                   <Link
-                    href="/admin/scenarios"
-                    className={`text-gray-200 hover:text-white transition-colors ${
-                      pathname === '/admin/scenarios' ? 'text-white font-medium' : ''
-                    }`}
+                    href={`/admin/scenarios?teamId=${currentTeamId}`}
+                    className={`text-gray-200 hover:text-white transition-colors ${pathname === '/admin/scenarios' ? 'text-white font-medium' : ''
+                      }`}
                   >
                     Manage Scenarios
                   </Link>
                   <Link
                     href="/admin/users"
-                    className={`text-gray-200 hover:text-white transition-colors ${
-                      pathname === '/admin/users' ? 'text-white font-medium' : ''
-                    }`}
+                    className={`text-gray-200 hover:text-white transition-colors ${pathname === '/admin/users' ? 'text-white font-medium' : ''
+                      }`}
                   >
                     Manage Users
                   </Link>

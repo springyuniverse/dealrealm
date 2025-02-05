@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, use } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/store/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,12 +12,13 @@ import {
   Eye,
   EyeOff,
   ArrowLeft,
-  MessageCircle
+  MessageCircle,
+  Users
 } from "lucide-react";
 import { Scenario, getScenarioById } from "@/lib/services/scenarios";
 import { Message } from "@/types";
 import { DynamicConversationWidget } from "@/components/dynamic-conversation-widget";
-
+import { getUserTeams } from "@/lib/services/teams";
 
 interface Props {
   params: {
@@ -26,8 +27,7 @@ interface Props {
 }
 
 export default function ChatSessionPage({ params }: Props) {
-  // Unwrap params using React.use()
-  const { id } = use(params);
+  const { id } = params;
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [userInput, setUserInput] = useState("");
@@ -39,10 +39,10 @@ export default function ChatSessionPage({ params }: Props) {
   const [loadingScenario, setLoadingScenario] = useState(true);
   const [isTyping, setIsTyping] = useState(false);
   const [analysis, setAnalysis] = useState<any>(null);
+  const [hasTeamAccess, setHasTeamAccess] = useState(false);
 
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [showScenarioDetails, setShowScenarioDetails] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -51,9 +51,31 @@ export default function ChatSessionPage({ params }: Props) {
   }, [user, loading, router]);
 
   useEffect(() => {
+    async function checkTeamAccess() {
+      if (user && scenario) {
+        try {
+          const teams = await getUserTeams(user.uid);
+          const hasAccess = teams.some(team => team.id === scenario.teamId);
+          setHasTeamAccess(hasAccess);
+          if (!hasAccess) {
+            router.replace("/scenarios");
+          }
+        } catch (error) {
+          console.error("Error checking team access:", error);
+          router.replace("/scenarios");
+        }
+      }
+    }
+
+    if (scenario) {
+      checkTeamAccess();
+    }
+  }, [user, scenario, router]);
+
+  useEffect(() => {
     async function fetchScenario() {
       try {
-        const data = await getScenarioById(id);
+        const data = await getScenarioById(id, user?.uid);
         setScenario(data);
       } catch (error) {
         console.error("Error fetching scenario:", error);
@@ -159,9 +181,25 @@ export default function ChatSessionPage({ params }: Props) {
     }
   };
 
+  if (loadingScenario) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-lg">Loading...</div>
+      </div>
+    );
+  }
 
-
-  if (!user || !scenario) return null;
+  if (!user || !scenario || !hasTeamAccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Users className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+          <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+          <p className="text-gray-600">You don't have access to this scenario.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!sessionStarted) {
     return (

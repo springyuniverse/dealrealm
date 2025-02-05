@@ -13,13 +13,18 @@ import {
 import { doc, getDoc, setDoc, Timestamp } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase/init";
 import { useRouter } from "next/navigation";
+import { createTeam, getUserTeams } from "@/lib/services/teams";
+import { Team } from "@/types";
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   isAdmin: boolean;
+  currentTeamId: string | null;
+  teams: Team[];
+  switchTeam: (teamId: string) => void;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name: string, company: string) => Promise<void>;
+  signUp: (email: string, password: string, name: string, teamName: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -31,6 +36,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const router = useRouter();
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [currentTeamId, setCurrentTeamId] = useState<string | null>(null);
 
   useEffect(() => {
     // Prefetch scenarios page
@@ -40,6 +47,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setUser(user);
+        const userTeams = await getUserTeams(user.uid);
+        setTeams(userTeams);
+        setCurrentTeamId(userTeams[0]?.id || null);
         // Check user role in Firestore
         const userDoc = await getDoc(doc(db, "users", user.uid));
         if (userDoc.exists()) {
@@ -76,15 +86,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, name: string, company: string) => {
+  const signUp = async (email: string, password: string, name: string, teamName: string) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
+
+    // Create team first
+    const team = await createTeam(teamName, user.uid);
 
     // Create user document in Firestore
     await setDoc(doc(db, "users", user.uid), {
       email,
       name,
-      company,
       role: "user", // Default role
       createdAt: Timestamp.now(),
       lastActive: Timestamp.now(),
@@ -115,11 +127,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         lastActive: Timestamp.now(),
       }, { merge: true });
     } else {
+      // For Google sign-in, we'll need to prompt for team name after successful auth
+      // This could be done through a modal or redirect to a setup page
+      // For now, we'll create a default team name based on the user's name
+      const teamName = `${user.displayName}'s Team`;
+      const team = await createTeam(teamName, user.uid);
+
       // Create new user document
       await setDoc(doc(db, "users", user.uid), {
         email: user.email,
         name: user.displayName,
-        company: "",
         role: "user", // Default role
         createdAt: Timestamp.now(),
         lastActive: Timestamp.now(),
@@ -156,9 +173,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+
+  const switchTeam = (teamId: string) => {
+    setCurrentTeamId(teamId);
+  };
+
+  
   return (
     <AuthContext.Provider
-      value={{ user, loading, isAdmin, signIn, signUp, signInWithGoogle, logout }}
+      value={{ user, loading, isAdmin, currentTeamId,teams,switchTeam, signIn, signUp, signInWithGoogle, logout }}
     >
       {children}
     </AuthContext.Provider>

@@ -7,32 +7,44 @@ import {
   updateDoc,
   query,
   where,
-  Timestamp 
+  Timestamp,
+  serverTimestamp
 } from "firebase/firestore";
+import { User, TeamMember } from "@/types";
 
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  company: string;
-  role: "admin" | "user";
-  createdAt: Date;
-  lastActive: Date;
+export async function getUsers(teamId?: string) {
+  if (teamId) {
+    // Get users for a specific team
+    const teamMembersRef = collection(db, "teamMembers");
+    const q = query(teamMembersRef, where("teamId", "==", teamId));
+    const membershipSnap = await getDocs(q);
+    
+    const users: User[] = [];
+    for (const memberDoc of membershipSnap.docs) {
+      const userId = memberDoc.data().userId;
+      try {
+        const user = await getUserById(userId);
+        users.push(user);
+      } catch (error) {
+        console.error(`Failed to get user ${userId}:`, error);
+      }
+    }
+    return users;
+  } else {
+    // Get all users
+    const usersRef = collection(db, "users");
+    const querySnapshot = await getDocs(usersRef);
+    
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate(),
+      lastActive: doc.data().lastActive?.toDate(),
+    })) as User[];
+  }
 }
 
-export async function getUsers() {
-  const usersRef = collection(db, "users");
-  const querySnapshot = await getDocs(usersRef);
-  
-  return querySnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data(),
-    createdAt: doc.data().createdAt?.toDate(),
-    lastActive: doc.data().lastActive?.toDate(),
-  })) as User[];
-}
-
-export async function getUserById(id: string) {
+export async function getUserById(id: string, teamId?: string) {
   const userRef = doc(db, "users", id);
   const userSnap = await getDoc(userRef);
   
@@ -41,32 +53,63 @@ export async function getUserById(id: string) {
   }
   
   const data = userSnap.data();
-  return {
+  const user = {
     id: userSnap.id,
     ...data,
     createdAt: data.createdAt?.toDate(),
     lastActive: data.lastActive?.toDate(),
   } as User;
+
+  if (teamId) {
+    // Get team-specific role if teamId is provided
+    const teamMembersRef = collection(db, "teamMembers");
+    const q = query(
+      teamMembersRef, 
+      where("teamId", "==", teamId),
+      where("userId", "==", id)
+    );
+    const memberSnap = await getDocs(q);
+    
+    if (!memberSnap.empty) {
+      const memberData = memberSnap.docs[0].data() as TeamMember;
+      return {
+        ...user,
+        teamRole: memberData.role,
+        groupIds: memberData.groupIds
+      };
+    }
+  }
+  
+  return user;
 }
 
-export async function updateUserRole(id: string, role: "admin" | "user") {
+export async function updateUser(id: string, data: Partial<User>) {
   const userRef = doc(db, "users", id);
   
   await updateDoc(userRef, {
-    role,
-    updatedAt: Timestamp.now(),
+    ...data,
+    updatedAt: serverTimestamp(),
   });
 }
 
-export async function getAdmins() {
-  const usersRef = collection(db, "users");
-  const q = query(usersRef, where("role", "==", "admin"));
-  const querySnapshot = await getDocs(q);
+export async function getTeamAdmins(teamId: string) {
+  const teamMembersRef = collection(db, "teamMembers");
+  const q = query(
+    teamMembersRef, 
+    where("teamId", "==", teamId),
+    where("role", "in", ["owner", "admin"])
+  );
+  const membershipSnap = await getDocs(q);
   
-  return querySnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data(),
-    createdAt: doc.data().createdAt?.toDate(),
-    lastActive: doc.data().lastActive?.toDate(),
-  })) as User[];
+  const admins: User[] = [];
+  for (const memberDoc of membershipSnap.docs) {
+    const userId = memberDoc.data().userId;
+    try {
+      const user = await getUserById(userId);
+      admins.push(user);
+    } catch (error) {
+      console.error(`Failed to get admin ${userId}:`, error);
+    }
+  }
+  return admins;
 }

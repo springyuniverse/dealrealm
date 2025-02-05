@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { withAdmin } from "@/lib/auth/with-admin";
 import { createScenario } from "@/lib/services/scenarios";
+import { getUserTeams, getTeamGroups } from "@/lib/services/teams";
+import { Team, Group } from "@/types";
 import { Plus, Trash2 } from "lucide-react";
 
 interface SuccessMetric {
@@ -27,6 +29,38 @@ function CreateScenarioPage() {
   const [maxQuestions, setMaxQuestions] = useState(10);
   const [successMetrics, setSuccessMetrics] = useState<SuccessMetric[]>([]);
   const [loading, setLoading] = useState(false);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [selectedTeam, setSelectedTeam] = useState("");
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+
+  useEffect(() => {
+    async function fetchTeams() {
+      try {
+        const teamsData = await getUserTeams("");
+        setTeams(teamsData);
+      } catch (error) {
+        console.error("Error fetching teams:", error);
+      }
+    }
+    fetchTeams();
+  }, []);
+
+  useEffect(() => {
+    async function fetchGroups() {
+      if (selectedTeam) {
+        try {
+          const groupsData = await getTeamGroups(selectedTeam);
+          setGroups(groupsData);
+        } catch (error) {
+          console.error("Error fetching groups:", error);
+        }
+      } else {
+        setGroups([]);
+      }
+    }
+    fetchGroups();
+  }, [selectedTeam]);
 
   const handleAddMetric = () => {
     const newMetric: SuccessMetric = {
@@ -110,12 +144,13 @@ function CreateScenarioPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loading) return;
+    if (loading || !selectedTeam) return;
 
     setLoading(true);
     try {
       await createScenario({
         title,
+        teamId: selectedTeam,
         description,
         customerBackground,
         situation,
@@ -123,7 +158,8 @@ function CreateScenarioPage() {
         timeLimit,
         maxQuestions,
         successMetrics,
-        isActive: false
+        isActive: false,
+        visibleToGroups: selectedGroups
       });
       router.push("/admin/scenarios");
     } catch (error) {
@@ -140,6 +176,46 @@ function CreateScenarioPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block font-medium mb-1 text-black">Team</label>
+              <select
+                value={selectedTeam}
+                onChange={(e) => setSelectedTeam(e.target.value)}
+                required
+                className="w-full p-2 border rounded-lg text-black"
+              >
+                <option value="">Select a team</option>
+                {teams.map(team => (
+                  <option key={team.id} value={team.id}>{team.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {selectedTeam && (
+              <div>
+                <label className="block font-medium mb-1 text-black">Visible to Groups</label>
+                <div className="space-y-2">
+                  {groups.map(group => (
+                    <label key={group.id} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedGroups.includes(group.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedGroups([...selectedGroups, group.id]);
+                          } else {
+                            setSelectedGroups(selectedGroups.filter(id => id !== group.id));
+                          }
+                        }}
+                        className="rounded border-gray-300"
+                      />
+                      <span className="text-black">{group.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="block font-medium mb-1 text-black">Title</label>
               <input
@@ -367,7 +443,7 @@ function CreateScenarioPage() {
               </button>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !selectedTeam}
                 className="px-4 py-2 bg-blue-800 text-white rounded-lg hover:bg-blue-900 disabled:opacity-50"
               >
                 {loading ? "Creating..." : "Create Scenario"}

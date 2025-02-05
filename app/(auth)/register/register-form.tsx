@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 export default function RegisterForm() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [company, setCompany] = useState("");
+  const [teamName, setTeamName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
@@ -29,7 +29,7 @@ export default function RegisterForm() {
     setLoading(true);
 
     try {
-      await signUp(email, password, name, company);
+      await signUp(email, password, name, teamName);
       router.push("/scenarios");
     } catch (error: any) {
       setError(error.message || "Failed to create account");
@@ -52,15 +52,15 @@ export default function RegisterForm() {
           onChange={(e) => setName(e.target.value)}
           required
           className="bg-[#1A1F2E] border-gray-700 text-white placeholder:text-gray-500"
-          placeholder="First name"
+          placeholder="Full name"
         />
         <Input
           type="text"
-          value={company}
-          onChange={(e) => setCompany(e.target.value)}
+          value={teamName}
+          onChange={(e) => setTeamName(e.target.value)}
           required
           className="bg-[#1A1F2E] border-gray-700 text-white placeholder:text-gray-500"
-          placeholder="Last name"
+          placeholder="Team name"
         />
       </div>
 
@@ -80,6 +80,15 @@ export default function RegisterForm() {
         required
         className="bg-[#1A1F2E] border-gray-700 text-white placeholder:text-gray-500"
         placeholder="Enter your password"
+      />
+
+      <Input
+        type="password"
+        value={confirmPassword}
+        onChange={(e) => setConfirmPassword(e.target.value)}
+        required
+        className="bg-[#1A1F2E] border-gray-700 text-white placeholder:text-gray-500"
+        placeholder="Confirm password"
       />
 
       <div className="flex items-center gap-2">

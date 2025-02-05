@@ -1,10 +1,35 @@
+// Team Types
+export interface Team {
+  id: string;
+  name: string;
+  createdAt: Date;
+  updatedAt: Date;
+  ownerId: string;
+}
+
+export interface Group {
+  id: string;
+  teamId: string;
+  name: string;
+  description: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface TeamMember {
+  userId: string;
+  teamId: string;
+  role: "owner" | "admin" | "member";
+  groupIds: string[];
+  joinedAt: Date;
+}
+
 // User Types
 export interface User {
   id: string;
   email: string;
   name: string;
   role: "admin" | "user";
-  company: string;
   createdAt: Date;
   lastActive: Date;
 }
@@ -21,6 +46,7 @@ export interface SuccessMetric {
 
 export interface Scenario {
   id: string;
+  teamId: string;
   title: string;
   description: string;
   difficulty: "beginner" | "intermediate" | "advanced";
@@ -33,6 +59,7 @@ export interface Scenario {
   createdAt: Date;
   updatedAt: Date;
   isActive: boolean;
+  visibleToGroups: string[]; // IDs of groups that can access this scenario
 }
 
 // Chat Types
@@ -78,6 +105,7 @@ export interface SessionResults {
 export interface Session {
   id: string;
   userId: string;
+  teamId: string;
   scenarioId: string;
   startTime: Date;
   endTime: Date;

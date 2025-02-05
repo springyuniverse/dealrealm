@@ -1,16 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { withAdmin } from "@/lib/auth/with-admin";
+import { withTeamAdmin } from "@/lib/auth/with-team-admin";
 import { Scenario, getAllScenarios, deleteScenario, toggleScenarioStatus } from "@/lib/services/scenarios";
 import { Plus, Edit, Trash2, Eye, Power } from "lucide-react";
 
-function AdminScenariosPage() {
+function AdminScenariosPage({ teamId }: { teamId: string | null }) {
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const teamIdFromParams = searchParams.get('teamId') as string | null;
+
+  if (!teamId && !teamIdFromParams) {
+    console.error("Team ID is undefined");
+    return <div className="max-w-6xl mx-auto p-4">
+      <div className="text-center">Team ID is undefined</div>
+    </div>;
+  }
+
+  const effectiveTeamId = teamId || teamIdFromParams;
 
   useEffect(() => {
     async function fetchScenarios() {
@@ -53,7 +64,7 @@ function AdminScenariosPage() {
   const handleToggleStatus = async (id: string, currentStatus: boolean) => {
     try {
       await toggleScenarioStatus(id, !currentStatus);
-      setScenarios(scenarios.map(s => 
+      setScenarios(scenarios.map(s =>
         s.id === id ? { ...s, isActive: !currentStatus } : s
       ));
     } catch (error) {
@@ -92,11 +103,10 @@ function AdminScenariosPage() {
                   <p className="text-sm text-gray-600 mt-1">Created {scenario.createdAt.toLocaleDateString()}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`px-3 py-1 rounded-full text-sm ${
-                    scenario.isActive 
+                  <span className={`px-3 py-1 rounded-full text-sm ${scenario.isActive
                       ? "bg-green-100 text-green-700"
                       : "bg-gray-100 text-gray-700"
-                  }`}>
+                    }`}>
                     {scenario.isActive ? "Active" : "Draft"}
                   </span>
                   <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
@@ -120,11 +130,10 @@ function AdminScenariosPage() {
               <div className="flex justify-end gap-2">
                 <button
                   onClick={() => handleToggleStatus(scenario.id, scenario.isActive)}
-                  className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
-                    scenario.isActive
+                  className={`px-4 py-2 rounded-lg flex items-center gap-2 ${scenario.isActive
                       ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"
                       : "bg-green-100 text-green-700 hover:bg-green-200"
-                  }`}
+                    }`}
                 >
                   <Power className="w-4 h-4" />
                   {scenario.isActive ? "Disable" : "Enable"}
@@ -159,4 +168,18 @@ function AdminScenariosPage() {
   );
 }
 
-export default withAdmin(AdminScenariosPage);
+export default withTeamAdmin((props) => {
+  const searchParams = useSearchParams();
+  const teamIdFromParams = searchParams.get('teamId') as string | null;
+
+  if (!props.teamId && !teamIdFromParams) {
+    console.error("Team ID is undefined in withTeamAdmin");
+    return <div className="max-w-6xl mx-auto p-4">
+      <div className="text-center">Team ID is undefined</div>
+    </div>;
+  }
+
+  const effectiveTeamId = props.teamId || teamIdFromParams;
+
+  return <AdminScenariosPage {...props} teamId={effectiveTeamId} />;
+});
